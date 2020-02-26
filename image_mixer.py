@@ -1,15 +1,24 @@
 import numpy as np 
 import os,glob,re
+import tkinter as tk
+from tkinter import filedialog
 
 Chip_size = 2160*6.5
 # open folder
 # list all the file end with raw
+
+root = tk.TK()
+root.withdraw()
+
+folderpath = filedialog.askdirectory()
+os.chdir(folderpath)
 file_list = glob.glob('*.raw')
 print(file_list)
 # for loop
 for aFile in file_list:
     x_value = re.findall(r'%s(\d+)'%'x_',aFile)
     zoom_value = re.findall(r'%s(\d+)'%'zoom_',aFile)
+    shutterconfig = re.findall(r'%s(\d+)'%'zoom_',aFile)
     print(x_value)
     print(zoom_value)
 

@@ -18,22 +18,19 @@ root.withdraw()
 folderpath = filedialog.askdirectory()
 os.chdir(folderpath)
 file_list = glob.glob('*')
-#print(file_list)
-
-#pg_app = QtWidgets.QApplication(sys.argv)
+print(file_list)
+pg_app = QtWidgets.QApplication(sys.argv)
 
 # rename all files, remove the serial number in the end
 for aFile in file_list:
-    pattern = re.compile(r'(.raw|_meta.txt)')
+    pattern = re.compile(r'(.raw_meta.txt|.raw)')
     exts = pattern.findall(aFile)    
     ext = [exts[-1]]
+    #print(ext)
     pattern = re.compile(r'(.*)_\d+%s'%(ext))
     new_name = pattern.findall(aFile)
-    print(new_name)
-    #os.rename(aFile,new_name[0]+'.raw')
+    #os.rename(aFile,new_name)
 
-
-'''
 file_list = glob.glob('*.raw')    
 
 for aFile in file_list:
@@ -49,9 +46,6 @@ for aFile in file_list:
         x_value = int(x_value[0])
         zoom_value = int(zoom_value[0])
         image_size = chip_size/zoom_value
-
-        print(x_value)
-        print(zoom_value)
 
         # find out the new file name
         pattern = re.compile(r'(.*)(_left|_right|_Left|_Right)(.*)%s'%('.raw'))
@@ -106,4 +100,3 @@ for aFile in file_list:
             #os.remove(p_data)
             #os.remove(n_data)      
 sys.exit(pg_app.exec_())
-'''

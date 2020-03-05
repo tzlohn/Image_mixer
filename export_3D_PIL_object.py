@@ -19,7 +19,7 @@ def convert_3D_frames_to_image(Data_3d):
             im.append(Image.fromarray(Data_3d[:,:,n]))
         elif isinstance(Data_3d,list):
             im.append(Image.fromarray(Data_3d[n]))
-    return im
+    return im # im is a PIL.Image object now
 
 
 

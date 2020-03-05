@@ -84,7 +84,7 @@ for aFile in file_list:
             with open(aFile) as imfile:
                 im_np = np.memmap(imfile, dtype = 'uint16', mode = 'r', shape = dim_size)
                 im = e3PO.convert_3D_frames_to_image(im_np)
-                im[0].save(new_file_name, append_images = im)
+                im[0].save(new_file_name, save_all = True, append_images = im)
         else:   # if a file with a range includes 0, check shutterconfig
         # calculates the percentage of the positive part and the negative part  
             positive_percentage = abs(x_end)/image_size
@@ -102,13 +102,15 @@ for aFile in file_list:
 
             with open(theOtherFile) as n_data:    
                 negative_image = np.memmap(n_data, dtype = "uint16", mode = 'r', shape = dim_size)
+            
             # combine them     
             new_image = np.zeros(dim_size)
             new_image[:,:,0:round(x_pixels*positive_percentage)-1] = positive_image[:,:,0:round(x_pixels*positive_percentage)-1]
             new_image[:,:,round(x_pixels*positive_percentage):-1] = negative_image[:,:,round(x_pixels*positive_percentage):-1]
-            pg.image(new_image)
+
             # Save it as a tiff file with the same name but no shutterconfig and LZW compressed
-            #imwrite(new_file_name+'.tif', data, compress=6, metadata={'axes': 'TZCYX'})  
+            im = e3PO.convert_3D_frames_to_image(new_image)
+            im[0].save(new_file_name, save_all = True, append_images = im)
             # delete both files     
             #os.remove(p_data)
             #os.remove(n_data)

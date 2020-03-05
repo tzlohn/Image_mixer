@@ -5,7 +5,8 @@ import tkinter as tk
 from tkinter import filedialog
 import pyqtgraph as pg
 from PyQt5 import QtWidgets
-from PIL import Image 
+from PIL import Image
+import export_3D_PIL_object as e3PO
 
 # magic numbers
 x_pixels = 2080
@@ -38,6 +39,7 @@ for aFile in file_list:
 # list all files again, with their new name
 file_list = glob.glob('*.raw')    
 
+# work with every file in the loop
 for aFile in file_list:
     if not os.path.exists(aFile):
         pass
@@ -51,7 +53,7 @@ for aFile in file_list:
         zoom_value = int(zoom_value[0])
         image_size = chip_size/zoom_value
 
-        # find out the new file name
+        # get the new file name from the old file name (shutterconfig will be removed)
         pattern = re.compile(r'(.*)(_left|_right|_Left|_Right)(.*)%s'%('.raw'))
         filename_piece = pattern.findall(aFile)
         filename_piece = filename_piece[0]
@@ -81,8 +83,8 @@ for aFile in file_list:
         if x_start * x_end >= 0:          # if a file with a range doesn't include 0, rename the file without shutterconfig              
             with open(aFile) as imfile:
                 im_np = np.memmap(imfile, dtype = 'uint16', mode = 'r', shape = dim_size)
-                im = Image.fromarray(im_np)
-                im.save(new_file_name)
+                im = e3PO.convert_3D_frames_to_image(im_np)
+                im[0].save(new_file_name, append_images = im)
         else:   # if a file with a range includes 0, check shutterconfig
         # calculates the percentage of the positive part and the negative part  
             positive_percentage = abs(x_end)/image_size

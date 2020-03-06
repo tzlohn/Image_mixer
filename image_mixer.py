@@ -4,8 +4,7 @@ import os.path
 import glob,re,sys
 import tkinter as tk
 from tkinter import filedialog
-from PIL import Image
-
+from PIL import Image, TiffImagePlugin
 
 # assign and open the folder
 root = tk.Tk()
@@ -52,7 +51,6 @@ for aFile in file_list:
             for dim_name in dim_names:
                 pattern = re.compile(r"[\[]%s[\]] (\d+)"%dim_name)
                 value = pattern.findall(image_info)
-                print(value)
                 dim_size[n] = int(value[0])
                 n=n+1
             pattern = re.compile(r"[\[]%s[\]] (.*)"%'Pixelsize in um')
@@ -61,11 +59,7 @@ for aFile in file_list:
         x_pixels = dim_size[2]
         image_size = x_pixels * float(value[0])
         dim_size = tuple(dim_size)     
-        
-        print(dim_size)
-        print(x_pixels)
-        print(image_size)
-        
+                
         # get the new file name from the old file name (shutterconfig will be removed)
         pattern = re.compile(r'(.*)(_left|_right|_Left|_Right)(.*)%s'%('.raw'))
         filename_piece = pattern.findall(aFile)
@@ -114,7 +108,7 @@ for aFile in file_list:
         # Save it as a tiff file with the same name but no shutterconfig and LZW compressed
         new_image = im_np.transpose(1,2,0)
         im = e3PO.convert_3D_frames_to_image(new_image)
-        im[0].save(new_file_name, save_all = True, append_images = im)
+        im[0].save(new_file_name, save_all = True, append_images = im, compression = 'tiff_lzw')
         
             # delete both files     
             #os.remove(p_data)

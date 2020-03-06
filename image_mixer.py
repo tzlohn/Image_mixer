@@ -5,6 +5,7 @@ import glob,re,sys
 import tkinter as tk
 from tkinter import filedialog
 from PIL import Image, TiffImagePlugin
+#TiffImagePlugin.WRITE_LIBTIFF = True
 
 # assign and open the folder
 root = tk.Tk()

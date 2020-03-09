@@ -5,6 +5,7 @@ import glob,re,sys
 import tkinter as tk
 from tkinter import filedialog
 from PIL import Image, TiffImagePlugin
+import tifffile as TFF
 #TiffImagePlugin.WRITE_LIBTIFF = True
 
 # assign and open the folder
@@ -108,6 +109,7 @@ for aFile in file_list:
                     
         # Save it as a tiff file with the same name but no shutterconfig and LZW compressed
         new_image = im_np.transpose(1,2,0)
+        #TFF.imwrite(new_file_name, new_image, ijmetadata = {'magnification':'4.0','resolution': '1.6 um'})
         im = e3PO.convert_3D_frames_to_image(new_image)
         im[0].save(new_file_name, save_all = True, append_images = im, compression = 'tiff_lzw')
         

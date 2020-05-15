@@ -1,11 +1,13 @@
 import numpy as np 
 import export_3D_PIL_object as e3PO
-import os.path
+import os
+from shutil import copyfile
 import glob,re,sys
 import tkinter as tk
 from tkinter import filedialog
-from PIL import Image, TiffImagePlugin
+#from PIL import Image, TiffImagePlugin
 import tifffile as TFF
+
 #TiffImagePlugin.WRITE_LIBTIFF = True
 
 # assign and open the folder
@@ -17,30 +19,35 @@ os.chdir(folderpath)
 
 # list all the file end with raw
 file_list = glob.glob('*')
-print(file_list)
 
 # rename all files, remove the serial number in the end
 for aFile in file_list:
     pattern = re.compile(r'(.raw_meta.txt|.raw)')
     exts = pattern.findall(aFile)    
     ext = exts[-1]
-    pattern = re.compile(r'(.*)(_\d+)?%s'%ext)
-    new_name = pattern.findall(aFile)  
-    if new_name:
-        new_name = new_name[0][0] + ext
-        if not os.path.exists(new_name):
-            os.rename(aFile,new_name)
+    pattern = re.compile(r'(.*)(_0\d+)%s'%ext)
+    new_name = pattern.findall(aFile)
+    if new_name == []:
+        pattern = re.compile(r'(.*)%s'%ext)
+        new_name = pattern.findall(aFile)      
+        new_name = new_name[0] + ext
+    else:
+        new_name = new_name[0][0] + ext    
+
+    if not os.path.exists(new_name):
+        os.rename(aFile,new_name)
 
 # list all files again, with their new name
 file_list = glob.glob('*.raw')    
 
 # work with every file in the loop
 for aFile in file_list:
+    print(aFile)
     if not os.path.exists(aFile):
         pass
     else:            
         # get the value for x position_
-        x_value = re.findall(r'_X((-)?\d+)',aFile)    
+        x_value = re.findall(r'X((-)?\d+)',aFile)    
         x_value = x_value[0]
         x_value = int(x_value[0])
         
@@ -66,8 +73,14 @@ for aFile in file_list:
         pattern = re.compile(r'(.*)(_left|_right|_Left|_Right)(.*)%s'%('.raw'))
         filename_piece = pattern.findall(aFile)
         filename_piece = filename_piece[0]
-        new_file_name = filename_piece[0]+filename_piece[2]+".tif"
-        print(new_file_name)
+        new_file_name = filename_piece[0]+filename_piece[2]+".tif"      
+        if os.path.exists(new_file_name) is True:
+            continue
+        else:
+            meta_file_name = aFile + "_meta.txt"
+            tif_meta_name = filename_piece[0]+filename_piece[2]+".tif" + "_meta.txt"
+            copyfile(meta_file_name,tif_meta_name)
+            print(new_file_name)  
 
         # calculate the range of image for every file
         x_start = x_value - 0.5*image_size 
@@ -88,32 +101,37 @@ for aFile in file_list:
                 #pg.image(positive_image)
 
             # find out whether p_data is left or right, replace the shutterconfig in the name of n_data
-            if filename_piece[1] == 'Left':
+            if filename_piece[1] == '_Left':
                 theOtherFile = filename_piece[0] + '_Right' + filename_piece[2] + '.raw'
                 Left_image = one_image
-                the_other_image = 'Right_image = one_image'
+                the_other_image = 'Right_image = the_Other_image'
+                
             else:
                 theOtherFile = filename_piece[0] + '_Left' + filename_piece[2] + '.raw'
                 Right_image = one_image
-                the_other_image = 'Left_image = one_image'    
+                the_other_image = 'Left_image = the_Other_image'    
 
-            with open(theOtherFile) as data_2:    
-                one_image = np.memmap(data_2, dtype = "uint16", mode = 'r', shape = dim_size)
+            with open(theOtherFile) as data_2:
+                the_Other_image = np.memmap(data_2, dtype = "uint16", mode = 'r', shape = dim_size)
             
             exec(the_other_image)
 
             # combine them     
-            im_np = np.zeros(dim_size, dtype = 'uint16')
-            im_np[:,:,0:round(x_pixels*Right_percentage)] = Right_image[:,:,0:round(x_pixels*Right_percentage)]
-            im_np[:,:,round(x_pixels*Right_percentage):-1] = Left_image[:,:,round(x_pixels*Right_percentage):-1]
+            im_np = np.zeros([116,2048,2048], dtype = 'uint16')
+            im_np[:,:,0:round(x_pixels*Right_percentage)] = Right_image[0:116,:,0:round(x_pixels*Right_percentage)]
+            #print(im_rg.shape)
+            im_np[:,:,round(x_pixels*Right_percentage):-1] = Left_image[0:116,:,round(x_pixels*Right_percentage):-1]
+            #print(im_lf.shape)
+            #im_np[:,:,0:round(x_pixels*Right_percentage)] = Right_image[:,:,0:round(x_pixels*Right_percentage)]
+            #im_np[:,:,0] = im_rg[:,:,0]
+            #im_np[:,:,round(x_pixels*Right_percentage):-1] = Left_image[:,:,round(x_pixels*Right_percentage):-1]
                     
         # Save it as a tiff file with the same name but no shutterconfig and LZW compressed
         new_image = im_np.transpose(1,2,0)
-        #TFF.imwrite(new_file_name, new_image, ijmetadata = {'magnification':'4.0','resolution': '1.6 um'})
-        im = e3PO.convert_3D_frames_to_image(new_image)
-        im[0].save(new_file_name, save_all = True, append_images = im, compression = 'tiff_lzw')
-        
-            # delete both files     
-            #os.remove(p_data)
-            #os.remove(n_data)
-     
+        with TFF.TiffWriter(new_file_name, bigtiff = True, imagej = True, append = True) as Tif3D:
+            for n in range(new_image.shape[2]):
+                Tif3D.save(new_image[:,:,n])
+
+        #TFF.imwrite(new_file_name, new_image)
+        #im = e3PO.convert_3D_frames_to_image(new_image)
+        #im[0].save(new_file_name, save_all = True, append_images = im, compression = 'tiff_lzw')

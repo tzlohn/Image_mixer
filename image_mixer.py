@@ -117,10 +117,10 @@ for aFile in file_list:
             exec(the_other_image)
 
             # combine them     
-            im_np = np.zeros([116,2048,2048], dtype = 'uint16')
-            im_np[:,:,0:round(x_pixels*Right_percentage)] = Right_image[0:116,:,0:round(x_pixels*Right_percentage)]
+            im_np = np.zeros(dim_size, dtype = 'uint16')
+            im_np[:,:,0:round(x_pixels*Right_percentage)] = Right_image[:,:,0:round(x_pixels*Right_percentage)]
             #print(im_rg.shape)
-            im_np[:,:,round(x_pixels*Right_percentage):-1] = Left_image[0:116,:,round(x_pixels*Right_percentage):-1]
+            im_np[:,:,round(x_pixels*Right_percentage):-1] = Left_image[:,:,round(x_pixels*Right_percentage):-1]
             #print(im_lf.shape)
             #im_np[:,:,0:round(x_pixels*Right_percentage)] = Right_image[:,:,0:round(x_pixels*Right_percentage)]
             #im_np[:,:,0] = im_rg[:,:,0]
@@ -130,7 +130,7 @@ for aFile in file_list:
         new_image = im_np.transpose(1,2,0)
         with TFF.TiffWriter(new_file_name, bigtiff = True, imagej = True, append = True) as Tif3D:
             for n in range(new_image.shape[2]):
-                Tif3D.save(new_image[:,:,n])
+                Tif3D.save(new_image[:,:,n], compress = 5)
 
         #TFF.imwrite(new_file_name, new_image)
         #im = e3PO.convert_3D_frames_to_image(new_image)

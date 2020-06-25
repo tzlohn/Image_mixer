@@ -7,6 +7,7 @@ import tkinter as tk
 from tkinter import filedialog
 #from PIL import Image, TiffImagePlugin
 import tifffile as TFF
+import gc
 
 #TiffImagePlugin.WRITE_LIBTIFF = True
 
@@ -87,9 +88,15 @@ for aFile in file_list:
         x_end = x_value + 0.5*image_size
 
         # save the range in a dictionary?
-        if x_start * x_end >= 0:                     
+        if x_start * x_end >= 0:
+#*** should change to a function which finds the counter part.                     
             with open(aFile) as imfile:
                 im_np = np.memmap(imfile, dtype = 'uint16', mode = 'r', shape = dim_size)
+            
+            im_np = im_np.transpose(1,2,0)
+            with TFF.TiffWriter(new_file_name, bigtiff = True, append = True) as Tif3D:
+                for n in range(im_np.shape[2]):
+                    Tif3D.save(im_np[:,:,n])
 
         else:   # if a file with a range includes 0, check shutterconfig
         # calculates the percentage of the positive part and the negative part  
@@ -116,22 +123,25 @@ for aFile in file_list:
             
             exec(the_other_image)
 
-            # combine them     
-            im_np = np.zeros(dim_size, dtype = 'uint16')
-            im_np[:,:,0:round(x_pixels*Right_percentage)] = Right_image[:,:,0:round(x_pixels*Right_percentage)]
-            #print(im_rg.shape)
-            im_np[:,:,round(x_pixels*Right_percentage):-1] = Left_image[:,:,round(x_pixels*Right_percentage):-1]
-            #print(im_lf.shape)
-            #im_np[:,:,0:round(x_pixels*Right_percentage)] = Right_image[:,:,0:round(x_pixels*Right_percentage)]
-            #im_np[:,:,0] = im_rg[:,:,0]
-            #im_np[:,:,round(x_pixels*Right_percentage):-1] = Left_image[:,:,round(x_pixels*Right_percentage):-1]
-                    
+            # combine them
+            with TFF.TiffWriter(new_file_name, bigtiff = True, append = True) as Tif3D:
+                for n in range(dim_size[0]):     
+                    im_np = np.zeros([1,dim_size[1],dim_size[2]], dtype = 'uint16')
+                    im_np[0,:,0:round(x_pixels*Right_percentage)] = Right_image[n,:,0:round(x_pixels*Right_percentage)]
+                    #print(im_rg.shape)
+                    im_np[0,:,round(x_pixels*Right_percentage):-1] = Left_image[n,:,round(x_pixels*Right_percentage):-1]
+                    im_np = im_np.transpose(1,2,0)
+                    Tif3D.save(im_np[:,:,0])
+
+                
+        '''            
         # Save it as a tiff file with the same name but no shutterconfig and LZW compressed
         new_image = im_np.transpose(1,2,0)
-        with TFF.TiffWriter(new_file_name, bigtiff = True, imagej = True, append = True) as Tif3D:
+        with TFF.TiffWriter(new_file_name, bigtiff = True, append = True) as Tif3D:
             for n in range(new_image.shape[2]):
-                Tif3D.save(new_image[:,:,n], compress = 5)
+                Tif3D.save(new_image[:,:,n])
 
         #TFF.imwrite(new_file_name, new_image)
         #im = e3PO.convert_3D_frames_to_image(new_image)
         #im[0].save(new_file_name, save_all = True, append_images = im, compression = 'tiff_lzw')
+        '''

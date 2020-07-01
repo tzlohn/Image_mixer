@@ -1,5 +1,5 @@
 import numpy as np 
-import export_3D_PIL_object as e3PO
+#import export_3D_PIL_object as e3PO
 import os
 from shutil import copyfile
 import glob,re,sys
@@ -94,9 +94,11 @@ for aFile in file_list:
                 im_np = np.memmap(imfile, dtype = 'uint16', mode = 'r', shape = dim_size)
             
             im_np = im_np.transpose(1,2,0)
+            
             with TFF.TiffWriter(new_file_name, bigtiff = True, append = True) as Tif3D:
                 for n in range(im_np.shape[2]):
                     Tif3D.save(im_np[:,:,n])
+            
 
         else:   # if a file with a range includes 0, check shutterconfig
         # calculates the percentage of the positive part and the negative part  
@@ -131,17 +133,21 @@ for aFile in file_list:
                     #print(im_rg.shape)
                     im_np[0,:,round(x_pixels*Right_percentage):-1] = Left_image[n,:,round(x_pixels*Right_percentage):-1]
                     im_np = im_np.transpose(1,2,0)
-                    Tif3D.save(im_np[:,:,0])
+                    Tif3D.save(im_np)
+                    
 
-                
-        '''            
+        '''    
+        im = e3PO.convert_3D_frames_to_image(im3D)
+        im[0].save(new_file_name, save_all = True, append_images = im)
+        #im[0].save(new_file_name, save_all = True, append_images = im, compression = 'tiff_lzw')
+                            
         # Save it as a tiff file with the same name but no shutterconfig and LZW compressed
         new_image = im_np.transpose(1,2,0)
         with TFF.TiffWriter(new_file_name, bigtiff = True, append = True) as Tif3D:
             for n in range(new_image.shape[2]):
-                Tif3D.save(new_image[:,:,n])
-
+                Tif3D.save(new_image[:,:,n],compress = 5)
+        '''
         #TFF.imwrite(new_file_name, new_image)
         #im = e3PO.convert_3D_frames_to_image(new_image)
         #im[0].save(new_file_name, save_all = True, append_images = im, compression = 'tiff_lzw')
-        '''
+    

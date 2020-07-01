@@ -25,6 +25,10 @@ file_list = glob.glob('*')
 for aFile in file_list:
     pattern = re.compile(r'(.raw_meta.txt|.raw)')
     exts = pattern.findall(aFile)    
+    if not exts:
+    # if there are files which in not ended by .raw or .raw_meta.txt, such as tif, then the loop
+    # will be continued.
+        continue
     ext = exts[-1]
     pattern = re.compile(r'(.*)(_0\d+)%s'%ext)
     new_name = pattern.findall(aFile)

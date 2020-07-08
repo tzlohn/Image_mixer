@@ -92,9 +92,9 @@ for aFile in file_list:
         x_end = x_value + 0.5*image_size
 
         # finding whether the file has a counter part illuminated by other side
-        if filename_piece[1] is "_Left":
+        if filename_piece[1] == "_Left":
             counter_name = filename_piece[0]+"_Right"+filename_piece[2]+".tif"
-        elif filename_piece[1] is "_Right":
+        elif filename_piece[1] == "_Right":
             counter_name = filename_piece[0]+"_Left"+filename_piece[2]+".tif"
 
         # save the range in a dictionary?
@@ -110,12 +110,26 @@ for aFile in file_list:
                 for n in range(im_np.shape[2]):
                     Tif3D.save(im_np[:,:,n])
             
-
         else:   # if a file with a range includes 0, check shutterconfig
         # calculates the percentage of the positive part and the negative part  
             Right_percentage = abs(x_end)/image_size
             Left_percentage = abs(x_start)/image_size 
             
+            if Right_percentage > Left_percentage:
+                filename = filename_piece[0]+"_Right"+filename_piece[2]+".tif"
+            else:
+                filename = filename_piece[0]+"_Left"+filename_piece[2]+".tif"
+
+            with open(filename) as imfile:
+                im_np = np.memmap(imfile, dtype = 'uint16', mode = 'r', shape = dim_size)
+            
+            im_np = im_np.transpose(1,2,0)
+            
+            with TFF.TiffWriter(new_file_name, bigtiff = True, append = True) as Tif3D:
+                for n in range(im_np.shape[2]):
+                    Tif3D.save(im_np[:,:,n])
+
+            '''
             with open(aFile) as data_1:
                 one_image = np.memmap(data_1, dtype = 'uint16', mode = 'r', shape = dim_size)
                 #pg.image(positive_image)
@@ -145,7 +159,7 @@ for aFile in file_list:
                     im_np[0,:,round(x_pixels*Right_percentage):-1] = Left_image[n,:,round(x_pixels*Right_percentage):-1]
                     im_np = im_np.transpose(1,2,0)
                     Tif3D.save(im_np)
-                    
+            '''        
 
         '''    
         im = e3PO.convert_3D_frames_to_image(im3D)

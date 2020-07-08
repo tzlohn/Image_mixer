@@ -87,8 +87,15 @@ for aFile in file_list:
         x_start = x_value - 0.5*image_size 
         x_end = x_value + 0.5*image_size
 
+        # finding whether the file has a counter part illuminated by other side
+        if filename_piece[1] is "_Left":
+            counter_name = filename_piece[0]+"_Right"+filename_piece[2]+".tif"
+        elif filename_piece[1] is "_Right":
+            counter_name = filename_piece[0]+"_Left"+filename_piece[2]+".tif"
+
         # save the range in a dictionary?
-        if x_start * x_end >= 0:
+        #if x_start * x_end >= 0:
+        if not os.path.exists(counter_name):
 #*** should change to a function which finds the counter part.                     
             with open(aFile) as imfile:
                 im_np = np.memmap(imfile, dtype = 'uint16', mode = 'r', shape = dim_size)

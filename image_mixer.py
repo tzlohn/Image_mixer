@@ -1,3 +1,10 @@
+"""
+This function convert raw files to tiff files and resave its meta file as well. In addition, the tiff is XY transposed
+# To Do 1: generate a metafile for the XY stitching.
+# To Do 2: After stitching, remove 90% of the overlap, and match the shape of x and y for LR stitching
+# LR xml generator
+# To Do 3: generate a meta file for the DV stitching 
+"""
 import numpy as np 
 #import export_3D_PIL_object as e3PO
 import os

@@ -2,7 +2,7 @@ import tkinter as tk
 from tkinter import filedialog
 import numpy as np
 import tifffile as TFF
-import os,time,shutil
+import os,time,shutil,re
 
 root =  tk.Tk()
 root.withdraw()
@@ -12,6 +12,14 @@ os.chdir(working_folder)
 
 left_file = filedialog.askopenfilename(title = "select the left image")
 right_file = filedialog.askopenfilename(title = "select the right image")
+
+def get_value(expression,text):
+    output = expression.findall(text)
+    value = ""
+    for num in output[0]:
+        value = value + num 
+    value = float(value)
+    return value
 
 def finding_index_for_zero(im_file, page_num, side, offset_threshold):
     
@@ -64,6 +72,27 @@ def get_dim_match_image(im, x_diff,y_diff,side):
 
 t_start = time.time()
 
+# get required parameters from meta file
+with open("meta_for_LR_fusion.txt",'r') as meta_file:
+    im_info = meta_file.read()
+    
+    pattern = re.compile(r"[\[]pixel size of x \(µm\)[\]] \: (\d+)(\.)?(\d+)?")
+    pixel_size_x = get_value(pattern,im_info)
+    
+    pattern = re.compile(r"[\[]pixel counts in x[\]] \: (\d+)")
+    x_pixels = get_value(pattern,im_info)
+
+    pattern = re.compile(r"[\[]z step size \(µm\)[\]] \: (\d+)(\.)?(\d+)?")
+    z_stepsize = get_value(pattern,im_info)
+
+    pattern = re.compile(r"[\[]x positions_Left[\]] \: [\[](.*)[\]]")
+    all_left_positions = pattern.findall(im_info)
+    all_left_positions = all_left_positions.split()
+
+    pattern = re.compile(r"[\[]x positions_Right[\]] \: [\[](.*)[\]]")
+    all_right_positions = pattern.findall(im_info)
+    all_right_positions = all_right_positions.split()
+
 with TFF.TiffFile(right_file) as right_tif:
     size_right = right_tif.pages[0].shape
     page_num_right = len(right_tif.pages)
@@ -80,22 +109,38 @@ os.mkdir(dest_folder[1])
 offset_threshold = 100
 ##
 
+## removing 90% of overlap
+pos = max(all_left_positions)
+image_size = pixel_size_x * x_pixels
+ratio_L_to_edge = (pos + 0.5*image_size)/image_size
+ratio_R_to_edge = abs(pos - 0.5*image_size)/image_size
+if ratio_L_to_edge >0.95:
+    overlap_offset_L = 0
+else:
+    overlap_offset_L = round((1-(ratio_L_to_edge+0.05))*image_size)
+
+if ratio_R_to_edge >0.95:
+    overlap_offset_R = 0
+else:
+    overlap_offset_R = round((1-(ratio_R_to_edge+0.05))*image_size)
+
+
 # finding upper and lower 0 lines
-left_cutting_pixel = finding_index_for_zero(left_file, page_num_left, "left", offset_threshold)
-right_cutting_pixel = finding_index_for_zero(right_file, page_num_right, "right", offset_threshold)
+left_cutting_pixel = finding_index_for_zero(left_file, page_num_left, "left", offset_threshold) # should be a number closer to 0
+right_cutting_pixel = finding_index_for_zero(right_file, page_num_right, "right", offset_threshold) # should be a number closer to size_right
 y_diff = size_right[0]-size_left[0]
-x_diff = (right_cutting_pixel+1)-(size_left[1] - left_cutting_pixel)
+x_diff = (right_cutting_pixel+1-overlap_offset_R)-(size_left[1]- overlap_offset_L - left_cutting_pixel)
 
 
 for n in range(page_num_right):
     im = TFF.imread(right_file, key = n)
-    im = im[:,0:right_cutting_pixel]
+    im = im[:,overlap_offset_R:right_cutting_pixel]
     an_image = get_dim_match_image(im,x_diff,y_diff,"Right")
 
     page_num_str = str(page_num_right)
     n_str = str(n)
-    while len(n_str) != len(page_num_str): 
-        n_str = "0" + n_str
+    digit_diff = len(page_num_str) - len(n_str)  
+    n_str = "0"*digit_diff + n_str
     name = "image_" + n_str + ".tif"
 
     TFF.imwrite(name, an_image, bigtiff = True)
@@ -103,13 +148,13 @@ for n in range(page_num_right):
     
 for n in range(page_num_left):
     im = TFF.imread(left_file, key = n)
-    im = im[:,left_cutting_pixel:-1]
+    im = im[:,left_cutting_pixel:size_left - overlap_offset_L]
     an_image = get_dim_match_image(im,x_diff,y_diff,"Left")
 
     page_num_str = str(page_num_left)
     n_str = str(n)
-    while len(n_str) != len(page_num_str): 
-        n_str = "0" + n_str
+    digit_diff = len(page_num_str) - len(n_str)  
+    n_str = "0"*digit_diff + n_str
     name = "image_" + n_str + ".tif"
 
     TFF.imwrite(name, an_image, bigtiff = True)
@@ -135,17 +180,15 @@ ori_H = 0
 ori_D = 0
 
 bit = 16
-
-dim_V = 6.5/2
-dim_H = 6.5/2
-dim_D = 4
+###########
+dim_V = pixel_size_y
+dim_H = pixel_size_x
+dim_D = z_stepsize
 
 all_left_positions = [-8500,-2492]
 all_right_positions = [-2492, 3516]
 xml_name = "terastitcher.xml"
-x_pixels = 2048
 
-######################
 slice_no = [len(right_tif.pages),len(left_tif.pages)]
 offset_H = 0
 if len(all_right_positions) > 1:
@@ -160,8 +203,6 @@ stack_column = 1
 
 image_files = ["Right_rot.tif","Left_rot.tif"]
 shift_no = [1, an_image.shape[0]-x_pixels]
-
-
 
 with open(xml_name,'w') as xml_file:
     xml_file.write("<?xml version=\"1.0\" encoding=\"UTF-8\" ?>\n")

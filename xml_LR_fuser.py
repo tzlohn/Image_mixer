@@ -19,10 +19,10 @@ def finding_index_for_zero(im_file, page_num, side, offset_threshold):
     column_num = last_layers.shape[2]
     row_num = last_layers.shape[1]
     
-    if side is "left":
+    if side is "right":
         delta = 1
         n = -1
-    elif side is "right":
+    elif side is "left":
         delta = -1
         n = column_num
 
@@ -39,21 +39,21 @@ def finding_index_for_zero(im_file, page_num, side, offset_threshold):
         index_of_0 = np.where(columns == 0)[0]
         size_of_0 = index_of_0.shape[0]
 
-    if side is "left":
+    if side is "right":
         return n
-    elif side is "right":
+    elif side is "left":
         return n-1
 
 def get_dim_match_image(im, x_diff,y_diff,side):
     dim_shape = im.shape
-    if side == "Left":
+    if side == "Right":
         if x_diff > 0:
             filling_zero_matrix  = np.zeros(shape = (dim_shape[0],x_diff), dtype = "uint16")
             im = np.concatenate([im ,filling_zero_matrix], axis = 1)
         if y_diff > 0:
             filling_zero_matrix  = np.zeros(shape = (y_diff,im.shape[1]), dtype = "uint16")
             im = np.concatenate([im ,filling_zero_matrix], axis = 0)            
-    elif side == "Right":
+    elif side == "Left":
         if x_diff < 0:
             filling_zero_matrix  = np.zeros(shape = (dim_shape[0],abs(x_diff)), dtype = "uint16")
             im = np.concatenate([filling_zero_matrix,im], axis = 1)
@@ -80,13 +80,13 @@ def save2_2D(n,imfile,overlap_offset,cutting_pixel,x_diff,y_diff,side,dest_folde
     img = TFF.TiffFile(imfile)
     im = TFF.imread(imfile, key = n)
 
-    if side == "Right":
+    if side == "Left":
         #im = im[:,overlap_offset:cutting_pixel]
         im = im[:,removed_x+overlap_offset:cutting_pixel]
-    elif side == "Left":
-        size_left = img.pages[0].shape
+    elif side == "Right":
+        size_right = img.pages[0].shape
         #im = im[:,cutting_pixel:size_left[1] - overlap_offset]
-        im = im[:,cutting_pixel:size_left[1] - overlap_offset - removed_x]
+        im = im[:,cutting_pixel:size_right[1] - overlap_offset - removed_x]
 
     an_image = get_dim_match_image(im,x_diff,y_diff,side)
 
@@ -153,8 +153,8 @@ def main():
         page_num_left = len(left_tif.pages)
 
     dest_folder = ["right_rot","left_rot"]
-    #os.mkdir(dest_folder[0])
-    #os.mkdir(dest_folder[1])
+    os.mkdir(dest_folder[0])
+    os.mkdir(dest_folder[1])
 
     ## magic number zone
     offset_threshold = 100
@@ -187,8 +187,8 @@ def main():
     # finding upper and lower 0 lines
     left_cutting_pixel = finding_index_for_zero(left_file, page_num_left, "left", offset_threshold) # should be a number closer to 0
     right_cutting_pixel = finding_index_for_zero(right_file, page_num_right, "right", offset_threshold) # should be a number closer to size_right
-    y_diff = size_right[0]-size_left[0]
-    x_diff = (right_cutting_pixel-overlap_offset_R)-(size_left[1]- overlap_offset_L - left_cutting_pixel)
+    y_diff = size_left[0]-size_right[0]
+    x_diff = (size_left[1]- overlap_offset_L - left_cutting_pixel)-(right_cutting_pixel-overlap_offset_R)
     
     core_no = multiprocessing.cpu_count()-1
     print(core_no)

@@ -13,25 +13,62 @@ def get_value(expression,text):
     value = float(value)
     return value
 
-def finding_index_for_zero(im_file, page_num, side, offset_threshold):
+def find_all_0_rows(img):
+    rows_of_zero = np.sum(img[0,:,:],axis = 1)
+    index_of_0 = np.where(rows_of_zero == 0)[0]
+    edge = [0,0]
+    diff = 1
+    
+    if index_of_0[-1] != img.shape[1]-1:
+        edge[1] = img.shape[1]-1
+        n = -1
+        if index_of_0[0] != 0:
+            edge[0] = 0
+        else:
+            while diff == 1 and n < len(index_of_0)-2:
+                n = n+1
+                diff = index_of_0[n+1] - index_of_0[n]
+            edge[0] = index_of_0[n]+1
+    else:
+        n = len(index_of_0)
+        while diff == 1:
+            n = n-1
+            diff = index_of_0[n] - index_of_0[n-1]         
+        edge[1] = index_of_0[n]-1
+        
+        if index_of_0[0] != 0:
+            edge[0] = 0
+        else:
+            while diff == 1 and n < len(index_of_0)-2:
+                n = n+1
+                diff = index_of_0[n+1] - index_of_0[n]
+            edge[0] = index_of_0[n]+1    
+    
+    return edge
+
+def finding_index_for_zero(im_file, page_num, side, removed_x):
     
     last_layers = TFF.imread(im_file, key = range(page_num-10,page_num,1))
     column_num = last_layers.shape[2]
     row_num = last_layers.shape[1]
+
+    offset_threshold = find_all_0_rows(last_layers)
     
-    if side is "right":
+    if side is "left":
         delta = 1
         n = -1
-    elif side is "left":
+        last_layers = last_layers[:,:,removed_x:column_num]
+    elif side is "right":
         delta = -1
-        n = column_num
+        n = column_num-removed_x-1
+        last_layers = last_layers[:,:,0:column_num-removed_x]
 
     size_of_0 = 1
     ini_set = n
 
     while size_of_0 != 0:
         n = n + delta
-        column = last_layers[0,offset_threshold:row_num-offset_threshold,n]
+        column = last_layers[0,offset_threshold[0]:offset_threshold[1],n]
         if n == ini_set + delta:
             columns = column
         else:
@@ -40,23 +77,23 @@ def finding_index_for_zero(im_file, page_num, side, offset_threshold):
         size_of_0 = index_of_0.shape[0]
 
     if side is "right":
-        return n
+        return n+removed_x
     elif side is "left":
-        return n-1
+        return n
 
 def get_dim_match_image(im, x_diff,y_diff,side):
     dim_shape = im.shape
     if side == "Right":
         if x_diff > 0:
             filling_zero_matrix  = np.zeros(shape = (dim_shape[0],x_diff), dtype = "uint16")
-            im = np.concatenate([im ,filling_zero_matrix], axis = 1)
+            im = np.concatenate([filling_zero_matrix,im], axis = 1)
         if y_diff > 0:
             filling_zero_matrix  = np.zeros(shape = (y_diff,im.shape[1]), dtype = "uint16")
-            im = np.concatenate([im ,filling_zero_matrix], axis = 0)            
+            im = np.concatenate([filling_zero_matrix,im], axis = 0)            
     elif side == "Left":
         if x_diff < 0:
             filling_zero_matrix  = np.zeros(shape = (dim_shape[0],abs(x_diff)), dtype = "uint16")
-            im = np.concatenate([filling_zero_matrix,im], axis = 1)
+            im = np.concatenate([im,filling_zero_matrix], axis = 1)
         if y_diff < 0:
             filling_zero_matrix  = np.zeros(shape = (abs(y_diff),im.shape[1]), dtype = "uint16")
             im = np.concatenate([im,filling_zero_matrix], axis = 0)
@@ -80,13 +117,12 @@ def save2_2D(n,imfile,overlap_offset,cutting_pixel,x_diff,y_diff,side,dest_folde
     img = TFF.TiffFile(imfile)
     im = TFF.imread(imfile, key = n)
 
-    if side == "Left":
-        #im = im[:,overlap_offset:cutting_pixel]
-        im = im[:,removed_x+overlap_offset:cutting_pixel]
-    elif side == "Right":
-        size_right = img.pages[0].shape
+    if side == "Right":
+        im = im[:,0:cutting_pixel - removed_x - overlap_offset]
+
+    elif side == "Left":    
         #im = im[:,cutting_pixel:size_left[1] - overlap_offset]
-        im = im[:,cutting_pixel:size_right[1] - overlap_offset - removed_x]
+        im = im[:,cutting_pixel + overlap_offset + removed_x:-1]
 
     an_image = get_dim_match_image(im,x_diff,y_diff,side)
 
@@ -128,6 +164,7 @@ def main():
         
         pattern = re.compile(r"[\[]pixel counts in x[\]] \: (\d+)")
         x_pixels = get_value(pattern,im_info)
+        x_pixels = int(x_pixels)
 
         pattern = re.compile(r"[\[]z step size \(µm\)[\]] \: (\d+)(\.)?(\d+)?")
         z_stepsize = get_value(pattern,im_info)
@@ -156,39 +193,39 @@ def main():
     os.mkdir(dest_folder[0])
     os.mkdir(dest_folder[1])
 
-    ## magic number zone
-    offset_threshold = 100
-    ##
-
-    ## removing 90% of overlap
+    ## removing 80% of overlap
     image_size = pixel_size_x * x_pixels
     pos = find_0_pos(all_left_positions,image_size)
 
     # only for the current file:TL200618
-    if pos != float(all_left_positions[-1]):
-        removed_x = round(0.5*(size_left[1]-pixel_size_x))
+    if pos != max(list(map(float,all_left_positions))):
+        removed_x = round(0.5*(size_left[1]-x_pixels))
     else:
         removed_x = 0
 
     ratio_of_Right = abs(pos + 0.5*image_size)/image_size 
     ratio_of_Left = abs(pos - 0.5*image_size)/image_size
-    if ratio_of_Right >0.95:
+    if ratio_of_Right >0.9:
         # if one side has the ratio larger than 95%, the the other side will be totally discarded.
         overlap_offset_L = 0
         overlap_offset_R = x_pixels
-    elif ratio_of_Left >0.95:
+    elif ratio_of_Left >0.9:
         overlap_offset_R = 0
         overlap_offset_L = x_pixels
     else:
-        # 10% overlap
-        overlap_offset_L = round((ratio_of_Left+0.05)*x_pixels)
-        overlap_offset_R = round((ratio_of_Right+0.05)*x_pixels)
+        # 20% overlap
+        overlap_offset_L = x_pixels-round((ratio_of_Left+0.1)*x_pixels)
+        overlap_offset_R = x_pixels-round((ratio_of_Right+0.1)*x_pixels)
+    print(("overlap_offset_L:%d,overlap_offset_R:%d,")%(overlap_offset_L,overlap_offset_R))
         
     # finding upper and lower 0 lines
-    left_cutting_pixel = finding_index_for_zero(left_file, page_num_left, "left", offset_threshold) # should be a number closer to 0
-    right_cutting_pixel = finding_index_for_zero(right_file, page_num_right, "right", offset_threshold) # should be a number closer to size_right
+    left_cutting_pixel = finding_index_for_zero(left_file, page_num_left, "left",removed_x) # should be a number closer to 0
+    right_cutting_pixel = finding_index_for_zero(right_file, page_num_right, "right",removed_x) # should be a number closer to size_right
     y_diff = size_left[0]-size_right[0]
-    x_diff = (size_left[1]- overlap_offset_L - left_cutting_pixel)-(right_cutting_pixel-overlap_offset_R)
+    x_diff = (size_left[1]-1 -left_cutting_pixel- overlap_offset_L)-(right_cutting_pixel-overlap_offset_R)
+    #x_diff = (left_cutting_pixel-overlap_offset_L)-(size_right[1]-overlap_offset_R-right_cutting_pixel)
+    print(("left_cutting_pixel:%d,right_cutting_pixel:%d,")%(left_cutting_pixel,right_cutting_pixel))
+    print(("x_diff:%d,y_diff:%d,")%(x_diff,y_diff))
     
     core_no = multiprocessing.cpu_count()-1
     print(core_no)
@@ -227,15 +264,10 @@ def main():
     xml_name = "terastitcher_for_LR.xml"
 
     slice_no = [len(right_tif.pages),len(left_tif.pages)]
+    
+    shift_no = [1, (im_shape[0][0]-0.2*x_pixels)*pixel_size_x]
     offset_H = 0
-    if len(all_right_positions) > 1:
-        offset_V = abs(float(all_right_positions[1]) - float(all_right_positions[0]))
-    elif len(all_left_positions) >1:
-        offset_V = abs(float(all_left_positions[1]) - float(all_left_positions[0]))
-    else:
-        offset_V = 0 
-
-    shift_no = [1, im_shape[0][0]-0.1*x_pixels]
+    offset_V = shift_no[1]
 
     with open(xml_name,'w') as xml_file:
         xml_file.write("<?xml version=\"1.0\" encoding=\"UTF-8\" ?>\n")
@@ -255,8 +287,8 @@ def main():
                 
             xml_file.write(" ROW=\"%d\""%(n))
             xml_file.write(" COL=\"%d\""%(0))   
-            xml_file.write(" ABS_H=\"%.1f\""%(shift_no[n]))
-            xml_file.write(" ABS_V=\"%.1f\""%(1))
+            xml_file.write(" ABS_H=\"%.1f\""%(1))
+            xml_file.write(" ABS_V=\"%.1f\""%(shift_no[n]))
                 
             xml_file.write(" ABS_D=\"0\"")
             xml_file.write(" STITCHABLE=\"yes\"")

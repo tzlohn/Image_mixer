@@ -63,10 +63,18 @@ for a_raw_file in all_raw_files:
                 value = pattern.findall(image_info)
                 dim_size[n] = int(value[0])
                 n=n+1
+        
+            pattern = re.compile(r"[\[]%s[\]] (\d+)"%("is\sscanned"))
+            is_scanned = pattern.findall(image_info)    
+        
         dim_size = tuple(dim_size)
 
         # save to tiff
-        im = np.memmap(a_raw_file, dtype = 'uint16', mode = 'r', shape = dim_size)
+        if is_scanned == "False":
+            im = np.ones(shape = dim_size, dtype = "uint16")
+            im = im*120
+        else:
+            im = np.memmap(a_raw_file, dtype = 'uint16', mode = 'r', shape = dim_size)
         n = 0
         new_name = ""
         while filename_piece[0][n]:

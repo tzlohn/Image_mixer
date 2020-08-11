@@ -18,32 +18,34 @@ def find_all_0_rows(img):
     index_of_0 = np.where(rows_of_zero == 0)[0]
     edge = [0,0]
     diff = 1
-    
-    if index_of_0[-1] != img.shape[1]-1:
-        edge[1] = img.shape[1]-1
-        n = -1
-        if index_of_0[0] != 0:
-            edge[0] = 0
-        else:
-            while diff == 1 and n < len(index_of_0)-2:
-                n = n+1
-                diff = index_of_0[n+1] - index_of_0[n]
-            edge[0] = index_of_0[n]+1
+    if index_of_0.size == 0:
+        pass
     else:
-        n = len(index_of_0)
-        while diff == 1:
-            n = n-1
-            diff = index_of_0[n] - index_of_0[n-1]         
-        edge[1] = index_of_0[n]-1
-        
-        if index_of_0[0] != 0:
-            edge[0] = 0
+        if index_of_0[-1] != img.shape[1]-1:
+            edge[1] = img.shape[1]-1
+            n = -1
+            if index_of_0[0] != 0:
+                edge[0] = 0
+            else:
+                while diff == 1 and n < len(index_of_0)-2:
+                    n = n+1
+                    diff = index_of_0[n+1] - index_of_0[n]
+                edge[0] = index_of_0[n]+1
         else:
-            while diff == 1 and n < len(index_of_0)-2:
-                n = n+1
-                diff = index_of_0[n+1] - index_of_0[n]
-            edge[0] = index_of_0[n]+1    
-    
+            n = len(index_of_0)
+            while diff == 1:
+                n = n-1
+                diff = index_of_0[n] - index_of_0[n-1]         
+            edge[1] = index_of_0[n]-1
+            
+            if index_of_0[0] != 0:
+                edge[0] = 0
+            else:
+                while diff == 1 and n < len(index_of_0)-2:
+                    n = n+1
+                    diff = index_of_0[n+1] - index_of_0[n]
+                edge[0] = index_of_0[n]+1    
+        
     return edge
 
 def finding_index_for_zero(im_file, page_num, side, removed_x):

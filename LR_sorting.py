@@ -9,6 +9,11 @@ from tkinter import filedialog
 from shutil import copyfile
 import os,re,glob,shutil,time
 
+# magic number zone #
+
+background_intensity = 120
+
+##
 root = tk.Tk()
 root.withdraw()
 
@@ -64,7 +69,7 @@ for a_raw_file in all_raw_files:
                 dim_size[n] = int(value[0])
                 n=n+1
         
-            pattern = re.compile(r"[\[]%s[\]] (\d+)"%("is\sscanned"))
+            pattern = re.compile(r"[\[]is\sscanned[\]] (\w+)")
             is_scanned = pattern.findall(image_info)    
         
         dim_size = tuple(dim_size)
@@ -72,7 +77,7 @@ for a_raw_file in all_raw_files:
         # save to tiff
         if is_scanned == "False":
             im = np.ones(shape = dim_size, dtype = "uint16")
-            im = im*120
+            im = im*background_intensity
         else:
             im = np.memmap(a_raw_file, dtype = 'uint16', mode = 'r', shape = dim_size)
         n = 0
